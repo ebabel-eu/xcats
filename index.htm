@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta name="viewport" content="width=device-width" />
+        <title>X-Cats App</title>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js"> </script>
+        <style>
+            body {
+                font-family: 'Space Age', 'Courier New', monospace;
+                color: #9e9;
+                font-size: 1.5em;
+                margin: 1em;
+                background: url(/Content/x-cats-background.png);
+                background-repeat: repeat-x;
+                background-color: #032302;
+            }
+            h1, h2, h3, h4, h5, h6 {
+                margin: 0 0 0.5em;
+            }
+            h1 {
+                font-size: 1.5em;
+            }
+            h2 {
+                font-size: 1.1em;
+            }
+            th, td {
+                border: solid 1px #9b9;
+                padding: 0.2em 0.5em;
+            }
+            th {
+                text-align: left;
+            }
+            caption {
+                font-style: italic;
+                margin-bottom: 0.5em;
+            }
+            table {
+                margin-bottom: 2em;
+                font-size: 0.75em;
+            }
+            input {
+                font-family: 'Courier New', monospace;
+            }
+
+            .commandLink {
+                color: #232;
+                font-size: 0.75em;
+                text-decoration: none;
+            }
+            .commandLink:hover {
+                color: #9b9;
+            }
+
+            form {
+                width: 24em;
+                margin-bottom: 3em;
+            }
+                form p {
+                    margin: 0 0 0.3em;
+                }
+                form label {
+                    width: 13em;
+                    float: left;
+                    border-bottom: solid 1px #9b9;
+                    font-size: 0.75em;
+                }
+                form input[type=text] {
+                    width: 22em;
+                }
+                form p.submitButton {
+                    padding-left: 9.7em;
+                }
+        </style>
+    </head>
+    <body>
+        <h1>X-Cats App</h1>
+
+        <h2>List X-Cats</h2>
+        <table></table>
+
+        <h2>Add a new X-Cat</h2>
+        <form action="#" method="post" id="AddCat">
+            <p>
+                <label for="CatName">Name: </label>
+                <input type="text" id="CatName" />
+            </p>
+            <p>
+                <label for="CatYearOfBirth">Date of birth: </label>
+                <select id="CatDayOfBirth"></select>
+                <select id="CatMonthOfBirth"></select>
+                <select id="CatYearOfBirth"></select>
+            </p>
+            <p>
+                <label for="MutantPower">Mutant power</label>
+                <input type="text" id="MutantPower" />
+            </p>
+            <p class="submitButton">
+                <input type="submit" value="Add new cat" />
+            </p>
+        </form>
+
+        <h2>Complete Survey</h2>
+        <form action="#" method="post" id="AddSurvey">        
+            <p>
+                <label for="Surveyor">Surveyor</label>
+                <input type="text" id="Surveyor" />
+            </p>
+            <p class="submitButton">
+                <input type="submit" value="Add new survey" />
+            </p>
+        </form>
+
+        <p><a href="#" id="SyncToServer" class="commandLink">Sync To Server</a></p>
+
+        <script>
+            // X-Cats library.
+            (function ($) {
+                "use strict";
+                var settings, xcatGui, xcatData;
+
+                xcatData = {
+                    createGuid: function GUID() {
+                        var S4 = function () {
+                            return Math.floor(
+                                    Math.random() * 0x10000 /* 65536 */
+                                ).toString(16);
+                        };
+
+                        return (
+                                S4() + S4() + "-" +
+                                S4() + "-" +
+                                S4() + "-" +
+                                S4() + "-" +
+                                S4() + S4() + S4()
+                            );
+                    },
+                    addCat: function () {
+                        var catToAdd, cats;
+                        catToAdd = {
+                            catGuid: xcatData.createGuid(),
+                            name: $(settings.catName).val(),
+                            dateOfBirth: new Date($(settings.catYearOfBirth).val(), $(settings.catMonthOfBirth).val(), $(settings.catDayOfBirth).val()),
+                            mutantPower: $(settings.mutantPower).val()
+                        };
+                        cats = xcatData.readLocalStorage("cats");
+                        cats.push(catToAdd);
+                        xcatData.saveLocalStorage({ key: "cats", value: cats });
+                        return catToAdd;
+                    },
+                    saveLocalStorage: function (keyValuePair) {
+                        localStorage[keyValuePair.key] = JSON.stringify(keyValuePair.value);
+                    },
+                    addSurvey: function () {
+                        var surveyToAdd, surveys;
+                        surveyToAdd = xcatData.populateSurveyToAdd();
+                        surveys = xcatData.readLocalStorage("surveys");
+                        surveys.push(surveyToAdd);
+                        xcatData.saveLocalStorage({ key: "surveys", value: surveys });
+                        localStorage.removeItem("cats");
+                    },
+                    populateSurveyToAdd: function () {
+                        return {
+                            surveyGuid: xcatData.createGuid(),
+                            timestamp: new Date().getTime(),
+                            surveyor: $("#Surveyor").val(),
+                            cats: xcatData.readLocalStorage("cats")
+                        };
+                    },
+                    readLocalStorage: function (key) {
+                        return (localStorage[key] === undefined) ? JSON.parse("[]") : JSON.parse(localStorage[key]);
+                    }
+                };
+
+                xcatGui = {
+                    init: function (options) {
+                        var defaults = {
+                            monthNames: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"],
+                            tableHeaders: ["Name", "DOB", "Power"],
+                            output: $(this).selector,
+                            catDayOfBirth: "#CatDayOfBirth",
+                            catMonthOfBirth: "#CatMonthOfBirth",
+                            catYearOfBirth: "#CatYearOfBirth",
+                            addCat: "#AddCat",
+                            addSurvey: "#AddSurvey",
+                            catName: "#CatName",
+                            mutantPower: "#MutantPower"
+                        };
+                        settings = $.extend(defaults, options);
+
+                        // Fill table headers.
+                        $(settings.output).xcatGui("appendHeadersToTable");
+
+                        // Display the cats.
+                        $(settings.output).xcatGui("populateCatsTableFromLocalStorage");
+
+                        // Populate the date of birth dropdown values.
+                        $(settings.catDayOfBirth).xcatGui("populateDays");
+                        $(settings.catMonthOfBirth).xcatGui("populateMonths");
+                        $(settings.catYearOfBirth).xcatGui("populateYears");
+
+                        // Handle adding an X-Cat submit.
+                        $(settings.addCat).on("submit", function (event) {
+                            $(settings.output).xcatGui("appendCatToTable", xcatData.addCat());
+                            event.preventDefault();
+                        });
+
+                        // Handle adding a survey submit.
+                        $(settings.addSurvey).on("submit", function (event) {
+                            xcatData.addSurvey();
+                            $(settings.output).xcatGui("clearTable");
+                            $(settings.output).xcatGui("appendHeadersToTable");
+                            event.preventDefault();
+                        });
+                    },
+                    populateDays: function () {
+                        var day;
+                        for (day = 1; day <= 31; day += 1) {
+                            $(this).append("<option>" + day + "</option>");
+                        }
+                    },
+                    populateMonths: function () {
+                        var index;
+                        for (index = 0; index < 12; index += 1) {
+                            $(this).append("<option value=" + index + ">" + settings.monthNames[index] + "</option>");
+                        }
+                    },
+                    populateYears: function () {
+                        var year, endyear;
+                        endyear = new Date().getFullYear();
+                        for (year = endyear; year > endyear - 25; year -= 1) {
+                            $(this).append("<option>" + year + "</option>");
+                        }
+                    },
+                    populateCatsTable: function (cats) {
+                        var index;
+                        for (index = 0; index < cats.length; index += 1) {
+                            $(this).append("<tr><td>" + cats[index].name + "</td><td>" + new Date(cats[index].dateOfBirth).toDateString() + "</td><td>" + cats[index].mutantPower + "</td></tr>");
+                        }
+                    },
+                    appendCatToTable: function (cat) {
+                        $(this).append("<tr class='flash'><td>" + cat.name + "</td><td>" + new Date(cat.dateOfBirth).toDateString() + "</td><td>" + cat.mutantPower + "</td></tr>");
+                    },
+                    populateCatsTableFromLocalStorage: function () {
+                        $(this).xcatGui("populateCatsTable", xcatData.readLocalStorage("cats"));
+                    },
+                    clearTable: function () {
+                        $(this).html("");
+                    },
+                    appendHeadersToTable: function () {
+                        var index;
+                        $(this).append("<thead><tr></tr></thead>");
+                        for (index = 0; index < settings.tableHeaders.length; index += 1) {
+                            $(this.selector + " thead tr").append("<th>" + settings.tableHeaders[index] + "</th>");
+                        }
+                    }
+                };
+
+                // Method calling logic
+                $.fn.xcatGui = function (method) {
+                    if (xcatGui[method]) {
+                        return xcatGui[method].apply(this, Array.prototype.slice.call(arguments, 1));
+                    }
+                    if (typeof method === "object" || !method) {
+                        return xcatGui.init.apply(this, arguments);
+                    }
+                    $.error("Method " + method + " does not exist on jQuery.xcatGui");
+                };
+
+            })(jQuery);
+
+            // todo: 1. Improve separation of concerns betwen xcatGui and xcatData so that gui sends info to data and data is ignorant about the gui.
+            // todo: 2. Move to jQuery Mobile.
+            // todo: 3. Syncing via ajax with a Python/mysql web API.
+
+            $(document).ready(function () {
+
+                // Initialise the plugin.
+                $("table").xcatGui();
+
+            });
+        </script>
+    </body>
+</html>
